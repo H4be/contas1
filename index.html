@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Clientes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>Sistema de Clientes</h1>
+
+    <div class="menu">
+        <button onclick="abrirTela('cadastro')">Cadastrar Cliente</button>
+        <button onclick="abrirTela('listar')">Listar Clientes</button>
+        <button onclick="abrirTela('pagamento')">Registrar Pagamento</button>
+    </div>
+
+    <!-- TELA CADASTRO -->
+    <div id="cadastro" class="tela">
+        <h2>Cadastrar Cliente</h2>
+        <input id="nome" placeholder="Nome">
+        <input id="vencimento" placeholder="Vencimento (dd/mm/aaaa)">
+        <input id="valor" placeholder="Valor R$" type="number">
+        <button onclick="salvarCliente()">Salvar</button>
+    </div>
+
+    <!-- TELA LISTAGEM -->
+    <div id="listar" class="tela">
+        <h2>Clientes Cadastrados</h2>
+        <ul id="lista"></ul>
+    </div>
+
+    <!-- TELA PAGAMENTO -->
+    <div id="pagamento" class="tela">
+        <h2>Registrar Pagamento</h2>
+        <select id="selectCliente"></select>
+        <input id="valorPago" placeholder="Valor pago" type="number">
+        <button onclick="pagar()">Registrar</button>
+    </div>
+
+<script src="script.js"></script>
+</body>
+</html>
