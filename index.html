@@ -2,43 +2,146 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Clientes</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Controle de Clientes</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f2f2f2; }
+        .tela { display: none; }
+        input, button { margin: 5px 0; padding: 8px; width: 100%; }
+        button { cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid black; padding: 8px; }
+    </style>
 </head>
 <body>
 
-    <h1>Sistema de Clientes</h1>
+    <!-- 🔐 TELA DE ACESSO -->
+    <div id="acesso" class="tela" style="display:block;">
+        <h2>Entrada</h2>
+        <input id="chave" placeholder="Digite a palavra-chave">
+        <button onclick="verificarChave()">Entrar</button>
+    </div>
 
-    <div class="menu">
+    <!-- 🔧 MENU -->
+    <div id="menu" class="tela">
+        <h2>Menu</h2>
         <button onclick="abrirTela('cadastro')">Cadastrar Cliente</button>
-        <button onclick="abrirTela('listar')">Listar Clientes</button>
+        <button onclick="abrirTela('listagem')">Listar Clientes</button>
         <button onclick="abrirTela('pagamento')">Registrar Pagamento</button>
     </div>
 
-    <!-- TELA CADASTRO -->
+    <!-- 📝 CADASTRAR -->
     <div id="cadastro" class="tela">
         <h2>Cadastrar Cliente</h2>
-        <input id="nome" placeholder="Nome">
-        <input id="vencimento" placeholder="Vencimento (dd/mm/aaaa)">
-        <input id="valor" placeholder="Valor R$" type="number">
+        <input id="nome" placeholder="Nome do cliente">
+        <input id="vencimento" placeholder="Data de vencimento (dd/mm/aaaa)">
+        <input id="valor" type="number" placeholder="Valor total (R$)">
         <button onclick="salvarCliente()">Salvar</button>
+        <button onclick="abrirTela('menu')">Voltar</button>
     </div>
 
-    <!-- TELA LISTAGEM -->
-    <div id="listar" class="tela">
-        <h2>Clientes Cadastrados</h2>
-        <ul id="lista"></ul>
+    <!-- 📋 LISTAGEM -->
+    <div id="listagem" class="tela">
+        <h2>Clientes</h2>
+        <table id="tabela"></table>
+        <button onclick="abrirTela('menu')">Voltar</button>
     </div>
 
-    <!-- TELA PAGAMENTO -->
+    <!-- 💰 PAGAMENTO -->
     <div id="pagamento" class="tela">
         <h2>Registrar Pagamento</h2>
-        <select id="selectCliente"></select>
-        <input id="valorPago" placeholder="Valor pago" type="number">
-        <button onclick="pagar()">Registrar</button>
+        <select id="clientePag"></select>
+        <input id="valorPag" type="number" placeholder="Valor recebido (R$)">
+        <button onclick="registrarPagamento()">Salvar Pagamento</button>
+        <button onclick="abrirTela('menu')">Voltar</button>
     </div>
 
-<script src="script.js"></script>
+<script>
+// ⭐ PALAVRA-CHAVE DEFINIDA POR VOCÊ:
+const CHAVE_CORRETA = "MARCENARIAMOVEISSANTOS";
+
+function verificarChave() {
+    let chave = document.getElementById("chave").value;
+    if (chave === CHAVE_CORRETA) {
+        abrirTela("menu");
+    } else {
+        alert("Palavra-chave incorreta!");
+    }
+}
+
+// ============================
+//      SISTEMA DO SITE
+// ============================
+
+function abrirTela(id) {
+    document.querySelectorAll(".tela").forEach(t => t.style.display = "none");
+    document.getElementById(id).style.display = "block";
+}
+
+function salvarCliente() {
+    let nome = document.getElementById("nome").value;
+    let venc = document.getElementById("vencimento").value;
+    let valor = parseFloat(document.getElementById("valor").value);
+
+    if (!nome || !venc || isNaN(valor)) {
+        alert("Preencha todos os campos!");
+        return;
+    }
+
+    fetch("/api/cadastrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, vencimento: venc, valor_total: valor })
+    })
+    .then(r => r.json())
+    .then(() => alert("Cliente cadastrado!"));
+}
+
+function carregarClientes() {
+    fetch("/api/listar")
+    .then(r => r.json())
+    .then(lista => {
+        let tabela = "<tr><th>Nome</th><th>Vencimento</th><th>Total</th><th>Pago</th><th>Restante</th></tr>";
+
+        lista.forEach(c => {
+            tabela += `<tr>
+                <td>${c.nome}</td>
+                <td>${c.vencimento}</td>
+                <td>R$ ${c.valor_total.toFixed(2)}</td>
+                <td>R$ ${c.valor_pago.toFixed(2)}</td>
+                <td>R$ ${(c.valor_total - c.valor_pago).toFixed(2)}</td>
+            </tr>`;
+        });
+
+        document.getElementById("tabela").innerHTML = tabela;
+
+        let select = document.getElementById("clientePag");
+        select.innerHTML = "";
+        lista.forEach((c, i) => {
+            select.innerHTML += `<option value="${i}">${c.nome}</option>`;
+        });
+    });
+}
+
+function registrarPagamento() {
+    let index = document.getElementById("clientePag").value;
+    let valor = parseFloat(document.getElementById("valorPag").value);
+
+    if (isNaN(valor)) {
+        alert("Digite um valor!");
+        return;
+    }
+
+    fetch("/api/pagar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index, valor })
+    })
+    .then(r => r.json())
+    .then(() => alert("Pagamento registrado!"));
+}
+
+setInterval(carregarClientes, 2000);
+</script>
+
 </body>
 </html>
