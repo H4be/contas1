@@ -50,7 +50,7 @@
     <div id="pagamento" class="tela">
         <h2>Registrar Pagamento</h2>
 
-        <select id="clientePag"></select>
+        <select id="clientePag" onchange="atualizarValorParcela()"></select>
 
         <h3>Forma de pagamento:</h3>
         <select id="tipoPag" onchange="toggleParcelas()">
@@ -83,10 +83,12 @@
     </div>
 
 <script>
-// ⭐ PALAVRA-CHAVE DEFINIDA POR VOCÊ:
+// ⭐ Palavra-chave
 const CHAVE_CORRETA = "MARCENARIAMOVEISSANTOS";
 
-// 🔐 Verificação de acesso
+// ============================
+// 🔐 ACESSO
+// ============================
 function verificarChave() {
     let chave = document.getElementById("chave").value;
     if (chave === CHAVE_CORRETA) {
@@ -96,112 +98,120 @@ function verificarChave() {
     }
 }
 
-// Abre a tela desejada
+// ============================
+// 🔧 NAVEGAÇÃO ENTRE TELAS
+// ============================
 function abrirTela(id) {
     document.querySelectorAll(".tela").forEach(t => t.style.display = "none");
     document.getElementById(id).style.display = "block";
 
-    if (id === "listagem") carregarClientes();
-    if (id === "pagamento") carregarClientes();
+    if (id === "listagem" || id === "pagamento") carregarClientes();
 }
 
 // ============================
-//      CADASTRAR CLIENTE
+// 📝 CADASTRAR CLIENTE
 // ============================
 function salvarCliente() {
-    let nome = document.getElementById("nome").value;
-    let venc = document.getElementById("vencimento").value;
+    let nome = document.getElementById("nome").value.trim();
+    let venc = document.getElementById("vencimento").value.trim();
     let valor = parseFloat(document.getElementById("valor").value);
 
     if (!nome || !venc || isNaN(valor)) {
-        alert("Preencha todos os campos!");
+        alert("Preencha todos os campos corretamente!");
         return;
     }
 
-    fetch("/api/cadastrar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, vencimento: venc, valor_total: valor })
+    let clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
+
+    clientes.push({
+        nome: nome,
+        vencimento: venc,
+        valor_total: valor,
+        valor_pago: 0
     });
+
+    localStorage.setItem("clientes", JSON.stringify(clientes));
     alert("Cliente cadastrado!");
+    document.getElementById("nome").value = "";
+    document.getElementById("vencimento").value = "";
+    document.getElementById("valor").value = "";
 }
 
 // ============================
-//      LISTAR CLIENTES
+// 📋 LISTAR CLIENTES
 // ============================
 function carregarClientes() {
-    fetch("/api/listar")
-    .then(r => r.json())
-    .then(lista => {
-        window.ultimaLista = lista;
+    let clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
+    window.ultimaLista = clientes;
 
-        let tabela = "<tr><th>Nome</th><th>Vencimento</th><th>Total</th><th>Pago</th><th>Restante</th></tr>";
-
-        lista.forEach(c => {
-            tabela += `<tr>
-                <td>${c.nome}</td>
-                <td>${c.vencimento}</td>
-                <td>R$ ${c.valor_total.toFixed(2)}</td>
-                <td>R$ ${c.valor_pago.toFixed(2)}</td>
-                <td>R$ ${(c.valor_total - c.valor_pago).toFixed(2)}</td>
-            </tr>`;
-        });
-
-        document.getElementById("tabela").innerHTML = tabela;
-
-        let select = document.getElementById("clientePag");
-        select.innerHTML = "";
-        lista.forEach((c, i) => {
-            select.innerHTML += `<option value="${i}">${c.nome}</option>`;
-        });
-
-        atualizarValorParcela();
+    // tabela
+    let tabela = "<tr><th>Nome</th><th>Vencimento</th><th>Total</th><th>Pago</th><th>Restante</th></tr>";
+    clientes.forEach(c => {
+        tabela += `<tr>
+            <td>${c.nome}</td>
+            <td>${c.vencimento}</td>
+            <td>R$ ${c.valor_total.toFixed(2)}</td>
+            <td>R$ ${c.valor_pago.toFixed(2)}</td>
+            <td>R$ ${(c.valor_total - c.valor_pago).toFixed(2)}</td>
+        </tr>`;
     });
-}
+    document.getElementById("tabela").innerHTML = tabela;
 
-// ============================
-//      PAGAMENTO PARCELADO
-// ============================
-
-function toggleParcelas() {
-    let tipo = document.getElementById("tipoPag").value;
-    document.getElementById("areaParcelas").style.display =
-        tipo === "parcelado" ? "block" : "none";
+    // select para pagamento
+    let select = document.getElementById("clientePag");
+    select.innerHTML = "";
+    clientes.forEach((c,i) => {
+        select.innerHTML += `<option value="${i}">${c.nome}</option>`;
+    });
 
     atualizarValorParcela();
 }
 
+// ============================
+// 💰 PAGAMENTO PARCELADO
+// ============================
+function toggleParcelas() {
+    let tipo = document.getElementById("tipoPag").value;
+    document.getElementById("areaParcelas").style.display =
+        tipo === "parcelado" ? "block" : "none";
+    atualizarValorParcela();
+}
+
 function atualizarValorParcela() {
-    if (!window.ultimaLista) return;
+    let clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
+    if (!clientes.length) return;
 
     let index = document.getElementById("clientePag").value;
-    let qtd = parseInt(document.getElementById("qtdParcelas").value);
-    let cliente = window.ultimaLista[index];
+    let cliente = clientes[index];
     if (!cliente) return;
 
-    let restante = cliente.valor_total - cliente.valor_pago;
-    let valorParcela = restante / qtd;
-
-    document.getElementById("valorParcelasLabel").innerHTML =
-        `Cada parcela: <b>R$ ${valorParcela.toFixed(2)}</b>`;
+    let tipo = document.getElementById("tipoPag").value;
+    if (tipo === "parcelado") {
+        let qtd = parseInt(document.getElementById("qtdParcelas").value);
+        let restante = cliente.valor_total - cliente.valor_pago;
+        let valorParcela = restante / qtd;
+        document.getElementById("valorParcelasLabel").innerHTML =
+            `Cada parcela: R$ ${valorParcela.toFixed(2)}`;
+    } else {
+        document.getElementById("valorParcelasLabel").innerHTML = "";
+    }
 }
 
 function registrarPagamento() {
-    let index = document.getElementById("clientePag").value;
-    let tipo = document.getElementById("tipoPag").value;
-    let valor = 0;
+    let clientes = JSON.parse(localStorage.getItem("clientes") || "[]");
+    if (!clientes.length) return;
 
+    let index = document.getElementById("clientePag").value;
+    let cliente = clientes[index];
+    let tipo = document.getElementById("tipoPag").value;
+
+    let valor = 0;
     if (tipo === "parcelado") {
         let qtd = parseInt(document.getElementById("qtdParcelas").value);
-
-        let cliente = window.ultimaLista[index];
         let restante = cliente.valor_total - cliente.valor_pago;
-
         valor = restante / qtd;
-
-        alert("Registrando parcela de R$ " + valor.toFixed(2));
-    }
-    else {
+        alert(`Registrando parcela de R$ ${valor.toFixed(2)}`);
+    } else {
         valor = parseFloat(document.getElementById("valorPag").value);
         if (isNaN(valor)) {
             alert("Digite um valor válido!");
@@ -209,14 +219,14 @@ function registrarPagamento() {
         }
     }
 
-    fetch("/api/pagar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index, valor })
-    });
+    cliente.valor_pago += valor;
+    if (cliente.valor_pago > cliente.valor_total) cliente.valor_pago = cliente.valor_total;
 
+    clientes[index] = cliente;
+    localStorage.setItem("clientes", JSON.stringify(clientes));
     alert("Pagamento registrado!");
-    abrirTela("menu");
+    document.getElementById("valorPag").value = "";
+    carregarClientes();
 }
 </script>
 
